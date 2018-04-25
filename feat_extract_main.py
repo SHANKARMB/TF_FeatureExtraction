@@ -21,13 +21,20 @@ import numpy as np
 import time
 from datetime import datetime
 
+import sys
+
+from sketchtoimage.settings import MODEL_PATH
+
+sys.path.append(MODEL_PATH)
+print('sys path is ..', sys.path)
+
 from .feature_extractor.feature_extractor import FeatureExtractor
 from .feature_extractor import utils
 
 
 def feature_extraction_queue(feature_extractor, images_path, layer_names,
                              batch_size, num_classes, num_images=100000):
-    '''
+    """
     Given a directory containing images, this function extracts features
     for all images. The layers to extract features from are specified
     as a list of strings. First, we seek for all images in the directory,
@@ -41,14 +48,15 @@ def feature_extraction_queue(feature_extractor, images_path, layer_names,
     :param num_classes: int, number of classes for ImageNet (1000 or 1001)
     :param num_images: int, number of images to process (default=100000)
     :return:
-    '''
+    """
 
     # Add a list of images to process, note that the list is ordered.
     image_files = images_path
     num_images = min(len(image_files), num_images)
     image_files = image_files[0:num_images]
-
+    print('image_files ', image_files)
     num_examples = len(image_files)
+    print('num_images are ', num_images)
     num_batches = int(np.ceil(num_examples / batch_size))
 
     # Fill-up last batch so it is full (otherwise queue hangs)
@@ -65,6 +73,7 @@ def feature_extraction_queue(feature_extractor, images_path, layer_names,
     # Initialize containers for storing processed filenames and features
     feature_dataset = {'filenames': []}
     for i, layer_name in enumerate(layer_names):
+        print('layer name is ..', layer_name)
         layer_shape = feature_extractor.layer_size(layer_name)
         layer_shape[0] = len(image_files)  # replace ? by number of examples
         feature_dataset[layer_name] = np.zeros(layer_shape, np.float32)
@@ -83,6 +92,7 @@ def feature_extraction_queue(feature_extractor, images_path, layer_names,
         for layer_name in layer_names:
             start = batch_index * batch_size
             end = start + batch_size
+            # print('outputs is ..\n', outputs)
             feature_dataset[layer_name][start:end] = outputs[layer_name]
 
         # Save the filenames of the images in the batch
@@ -106,21 +116,22 @@ def feature_extraction_queue(feature_extractor, images_path, layer_names,
     # We cut-off the last part of the final batch since this was filled-up
     feature_dataset['filenames'] = feature_dataset['filenames'][0:num_examples]
     for layer_name in layer_names:
+        print('finally layer name is ..', layer_name)
         feature_dataset[layer_name] = feature_dataset[layer_name][0:num_examples]
 
     return feature_dataset
 
 
 def feat_extract_main(
-        network_name='inception_v4',
+        network_name='inception_v3',
         checkpoint='/home/prime/ProjectWork/training/pretrained/inception_v3/inception_v3.ckpt',
         all_images='',
         out_file='/home/prime/ProjectWork/training/dataset/'
                  'images_for_featurevector/feature_vector/feature_vector_airplane.h5',
         layer_names='Logits',
-        preproc_func='',
+        preproc_func=None,
         num_preproc_threads=2,
-        batch_size=32,
+        batch_size=64,
         num_classes=1001
 
 ):
