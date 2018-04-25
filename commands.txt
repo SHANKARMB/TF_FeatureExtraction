@@ -1,0 +1,13 @@
+export PYTHONPATH="/home/prime/Final Sem Project/code/models/research/slim:$PYTHONPATH"
+python example_classification.py --network inception_v3 \
+--checkpoint /home/prime/ProjectWork/training/pretrained/inception_v3/inception_v3.ckpt \
+--image_path /home/prime/ProjectWork/training/dataset/images_for_featurevector/images \
+--num_classes 1001 \
+--logits_name Logits
+
+python example_feat_extract.py \
+--network inception_v4 \
+--checkpoint /home/prime/ProjectWork/training/pretrained/inception_v3/inception_v3.ckpt \
+--image_path /home/prime/ProjectWork/training/dataset/images_for_featurevector/images \
+--out_file /home/prime/ProjectWork/training/dataset/images_for_featurevector/feature_vector/feature_vector_airplane.h5 \
+--layer_names Logits
