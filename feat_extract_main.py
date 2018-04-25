@@ -21,11 +21,11 @@ import numpy as np
 import time
 from datetime import datetime
 
-from feature_extractor.feature_extractor import FeatureExtractor
-import feature_extractor.utils as utils
+from .feature_extractor.feature_extractor import FeatureExtractor
+from .feature_extractor import utils
 
 
-def feature_extraction_queue(feature_extractor, image_path, layer_names,
+def feature_extraction_queue(feature_extractor, images_path, layer_names,
                              batch_size, num_classes, num_images=100000):
     '''
     Given a directory containing images, this function extracts features
@@ -35,7 +35,7 @@ def feature_extraction_queue(feature_extractor, image_path, layer_names,
     processed and features are stored in a large object `features`.
 
     :param feature_extractor: object, TF feature extractor
-    :param image_path: str, path to directory containing images
+    :param images_path: str, path to directory containing images
     :param layer_names: list of str, list of layer names
     :param batch_size: int, batch size
     :param num_classes: int, number of classes for ImageNet (1000 or 1001)
@@ -44,17 +44,17 @@ def feature_extraction_queue(feature_extractor, image_path, layer_names,
     '''
 
     # Add a list of images to process, note that the list is ordered.
-    image_files = utils.find_files(image_path, ("jpg", "png"))
+    image_files = images_path
     num_images = min(len(image_files), num_images)
     image_files = image_files[0:num_images]
 
     num_examples = len(image_files)
-    num_batches = int(np.ceil(num_examples/batch_size))
+    num_batches = int(np.ceil(num_examples / batch_size))
 
     # Fill-up last batch so it is full (otherwise queue hangs)
     utils.fill_last_batch(image_files, batch_size)
 
-    print("#"*80)
+    print("#" * 80)
     print("Batch Size: {}".format(batch_size))
     print("Number of Examples: {}".format(num_examples))
     print("Number of Batches: {}".format(num_batches))
@@ -70,7 +70,7 @@ def feature_extraction_queue(feature_extractor, image_path, layer_names,
         feature_dataset[layer_name] = np.zeros(layer_shape, np.float32)
         print("Extracting features for layer '{}' with shape {}".format(layer_name, layer_shape))
 
-    print("#"*80)
+    print("#" * 80)
 
     # Perform feed-forward through the batches
     for batch_index in range(num_batches):
@@ -81,8 +81,8 @@ def feature_extraction_queue(feature_extractor, image_path, layer_names,
         outputs = feature_extractor.feed_forward_batch(layer_names)
 
         for layer_name in layer_names:
-            start = batch_index*batch_size
-            end   = start+batch_size
+            start = batch_index * batch_size
+            end = start + batch_size
             feature_dataset[layer_name][start:end] = outputs[layer_name]
 
         # Save the filenames of the images in the batch
@@ -90,10 +90,10 @@ def feature_extraction_queue(feature_extractor, image_path, layer_names,
 
         t2 = time.time()
         examples_in_queue = outputs['examples_in_queue']
-        examples_per_second = batch_size/float(t2-t1)
+        examples_per_second = batch_size / float(t2 - t1)
 
         print("[{}] Batch {:04d}/{:04d}, Batch Size = {}, Examples in Queue = {}, Examples/Sec = {:.2f}".format(
-            datetime.now().strftime("%Y-%m-%d %H:%M"), batch_index+1,
+            datetime.now().strftime("%Y-%m-%d %H:%M"), batch_index + 1,
             num_batches, batch_size, examples_in_queue, examples_per_second
         ))
 
@@ -111,21 +111,67 @@ def feature_extraction_queue(feature_extractor, image_path, layer_names,
     return feature_dataset
 
 
-################################################################################
-################################################################################
-################################################################################
+def feat_extract_main(
+        network_name='inception_v4',
+        checkpoint='/home/prime/ProjectWork/training/pretrained/inception_v3/inception_v3.ckpt',
+        all_images='',
+        out_file='/home/prime/ProjectWork/training/dataset/'
+                 'images_for_featurevector/feature_vector/feature_vector_airplane.h5',
+        layer_names='Logits',
+        preproc_func='',
+        num_preproc_threads=2,
+        batch_size=32,
+        num_classes=1001
+
+):
+    # resnet_v2_101/logits,resnet_v2_101/pool4 => to list of layer names
+    layer_names = layer_names.split(",")
+
+    # Initialize the feature extractor
+    feature_extractor = FeatureExtractor(
+        network_name=network_name,
+        checkpoint_path=checkpoint,
+        batch_size=batch_size,
+        num_classes=num_classes,
+        preproc_func_name=preproc_func,
+        preproc_threads=num_preproc_threads
+    )
+
+    # Print the network summary, use these layer names for feature extraction
+    feature_extractor.print_network_summary()
+
+    # Feature extraction example using a filename queue to feed images
+    feature_dataset = feature_extraction_queue(
+        feature_extractor, all_images, layer_names,
+        batch_size, num_classes)
+
+    # Write features to disk as HDF5 file
+    utils.write_hdf5(out_file, layer_names, feature_dataset)
+    print("Successfully written features to: {}".format(out_file))
+
+    # Close the threads and close session.
+    feature_extractor.close()
+    print("Finished.")
+
+    return feature_dataset
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description="TensorFlow feature extraction")
-    parser.add_argument("--network", dest="network_name", type=str, required=True, help="model name, e.g. 'resnet_v2_101'")
-    parser.add_argument("--checkpoint", dest="checkpoint", type=str, required=True, help="path to pre-trained checkpoint file")
-    parser.add_argument("--image_path", dest="image_path", type=str, required=True, help="path to directory containing images")
-    parser.add_argument("--out_file", dest="out_file", type=str, default="./features.h5", help="path to save features (HDF5 file)")
-    parser.add_argument("--layer_names", dest="layer_names", type=str, required=True, help="layer names separated by commas")
-    parser.add_argument("--preproc_func", dest="preproc_func", type=str, default=None, help="force the image preprocessing function (None)")
-    parser.add_argument("--preproc_threads", dest="num_preproc_threads", type=int, default=2, help="number of preprocessing threads (2)")
+    parser.add_argument("--network", dest="network_name", type=str, required=True,
+                        help="model name, e.g. 'resnet_v2_101'")
+    parser.add_argument("--checkpoint", dest="checkpoint", type=str, required=True,
+                        help="path to pre-trained checkpoint file")
+    parser.add_argument("--image_path", dest="image_path", type=str, required=True,
+                        help="path to directory containing images")
+    parser.add_argument("--out_file", dest="out_file", type=str, default="./features.h5",
+                        help="path to save features (HDF5 file)")
+    parser.add_argument("--layer_names", dest="layer_names", type=str, required=True,
+                        help="layer names separated by commas")
+    parser.add_argument("--preproc_func", dest="preproc_func", type=str, default=None,
+                        help="force the image preprocessing function (None)")
+    parser.add_argument("--preproc_threads", dest="num_preproc_threads", type=int, default=2,
+                        help="number of preprocessing threads (2)")
     parser.add_argument("--batch_size", dest="batch_size", type=int, default=64, help="batch size (32)")
     parser.add_argument("--num_classes", dest="num_classes", type=int, default=1001, help="number of classes (1001)")
     args = parser.parse_args()
@@ -144,7 +190,7 @@ if __name__ == "__main__":
     )
 
     # Print the network summary, use these layer names for feature extraction
-    #feature_extractor.print_network_summary()
+    # feature_extractor.print_network_summary()
 
     # Feature extraction example using a filename queue to feed images
     feature_dataset = feature_extraction_queue(

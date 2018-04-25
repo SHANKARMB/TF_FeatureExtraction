@@ -20,8 +20,8 @@ import argparse
 import numpy as np
 from scipy import misc
 
-from feature_extractor.feature_extractor import FeatureExtractor
-import feature_extractor.utils as utils
+from .feature_extractor.feature_extractor import FeatureExtractor
+from .feature_extractor import utils
 
 
 def classification_queue_input(feature_extractor, image_path, logits_name,

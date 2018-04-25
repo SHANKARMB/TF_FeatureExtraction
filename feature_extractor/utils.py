@@ -45,6 +45,7 @@ def find_files(paths, extensions, sort=True):
         files.sort()
     return files
 
+
 def fill_last_batch(image_list, batch_size):
     '''
     Fill up the last batch with the last example for the list.
@@ -55,9 +56,10 @@ def fill_last_batch(image_list, batch_size):
     :return:
     '''
     num_examples = len(image_list)
-    num_batches = int(np.ceil(num_examples/batch_size))
-    for i in range((num_batches*batch_size)-num_examples):
+    num_batches = int(np.ceil(num_examples / batch_size))
+    for i in range((num_batches * batch_size) - num_examples):
         image_list.append(image_list[-1])
+
 
 def sort_feature_dataset(feature_dataset):
     '''
@@ -76,6 +78,7 @@ def sort_feature_dataset(feature_dataset):
         if key == 'filenames': continue
         feature_dataset[key] = feature_dataset[key][indices]
 
+
 def write_hdf5(filename, layer_names, feature_dataset):
     '''
     Writes features to HDF5 file.
@@ -89,6 +92,7 @@ def write_hdf5(filename, layer_names, feature_dataset):
         for layer_name in layer_names:
             hf.create_dataset(layer_name, data=feature_dataset[layer_name], dtype=np.float32)
 
+
 def display_imagenet_prediction(image, class_index):
     class_label = imagenet_classnames[class_index]
     print("Prediction: {} (class_index={})".format(class_label, class_index))
@@ -96,5 +100,3 @@ def display_imagenet_prediction(image, class_index):
     plt.imshow(image)
     plt.axis('off')
     plt.show()
-
-
