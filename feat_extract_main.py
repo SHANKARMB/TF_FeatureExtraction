@@ -27,7 +27,7 @@ from sketchtoimage.settings import MODEL_PATH
 
 sys.path.append(MODEL_PATH)
 print('sys path is ..', sys.path)
-
+feature_extractor = None
 from .feature_extractor.feature_extractor import FeatureExtractor
 from .feature_extractor import utils
 
@@ -54,7 +54,7 @@ def feature_extraction_queue(feature_extractor, images_path, layer_names,
     image_files = images_path
     num_images = min(len(image_files), num_images)
     image_files = image_files[0:num_images]
-    print('image_files ', image_files)
+    # print('image_files ', image_files)
     num_examples = len(image_files)
     print('num_images are ', num_images)
     num_batches = int(np.ceil(num_examples / batch_size))
@@ -132,22 +132,25 @@ def feat_extract_main(
         preproc_func=None,
         num_preproc_threads=2,
         batch_size=64,
-        num_classes=1001
+        num_classes=1001,
+        times=2
 
 ):
+    global feature_extractor
     # resnet_v2_101/logits,resnet_v2_101/pool4 => to list of layer names
     layer_names = layer_names.split(",")
-
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>entered feat_extract_main>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     # Initialize the feature extractor
-    feature_extractor = FeatureExtractor(
-        network_name=network_name,
-        checkpoint_path=checkpoint,
-        batch_size=batch_size,
-        num_classes=num_classes,
-        preproc_func_name=preproc_func,
-        preproc_threads=num_preproc_threads
-    )
-
+    if times == 1 or times == 2:
+        feature_extractor = FeatureExtractor(
+            network_name=network_name,
+            checkpoint_path=checkpoint,
+            batch_size=batch_size,
+            num_classes=num_classes,
+            preproc_func_name=preproc_func,
+            preproc_threads=num_preproc_threads
+        )
+    print('>>>>>>>>>>>>>>>>>>>feature_extractor initlzd>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     # Print the network summary, use these layer names for feature extraction
     feature_extractor.print_network_summary()
 
@@ -168,6 +171,7 @@ def feat_extract_main(
 
 
 if __name__ == "__main__":
+    global feature_extractor
     parser = argparse.ArgumentParser(description="TensorFlow feature extraction")
     parser.add_argument("--network", dest="network_name", type=str, required=True,
                         help="model name, e.g. 'resnet_v2_101'")

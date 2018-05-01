@@ -47,7 +47,8 @@ class FeatureExtractor(object):
         :param preproc_threads: int, number of input threads (default=1)
 
         '''
-
+        # print('____________________________In constructor..__________________________________________')
+        tf.reset_default_graph()
         self._network_name = network_name
         self._checkpoint_path = checkpoint_path
         self._batch_size = batch_size
